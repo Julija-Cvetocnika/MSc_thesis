@@ -1,0 +1,48 @@
+---
+title: "denovolyzer_MScs"
+author: "Aodan Laighneach"
+date: "6/13/2023"
+output: html_document
+---
+
+```{r}
+library(denovolyzeR)
+```
+
+
+```{r}
+setwd("/home/julija/Downloads")
+
+denovo_geneset <- readLines("All_GENES.txt")
+
+```
+
+```{r}
+setwd("/home/julija/MSc_Thesis/")
+male_deg_denovo <- readLines("male_degs_hgnc.txt")
+female_deg_denovo <- readLines("female_degs_hgnc.txt")
+```
+
+```{r}
+female_bg <- denovo_geneset[denovo_geneset %in% female_deg_denovo ==FALSE]
+male_bg <- denovo_geneset[denovo_geneset %in% male_deg_denovo ==FALSE]
+
+```
+
+
+
+
+
+
+```{r}
+setwd("/home/julija/Downloads")
+de_novo_data <- read.delim("Control_denovo_data.txt", sep = "\t", header = T)
+geneset <- female_deg_denovo
+
+de_novo_results_Control_female  <- denovolyzeByClass(genes = de_novo_data$Gene, 
+                                     classes = de_novo_data$Class, 
+                                     nsamples = 54, 
+                                     includeGenes = geneset)
+
+```
+
