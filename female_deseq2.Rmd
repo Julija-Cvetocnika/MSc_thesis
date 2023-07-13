@@ -1,0 +1,132 @@
+---
+title: "deseq2_fem"
+output: html_document
+date: "2023-06-15"
+---
+
+```{r}
+
+```
+
+
+#Sets up tx2gene (allows you to map from transcripts to genes)
+
+```{r}
+setwd("/media/julija/Shield2")
+txdb <- makeTxDbFromGFF("Mus_musculus.GRCm39.105.gtf")
+k <- keys(txdb, keytype ="TXNAME")
+tx2gene <- select(txdb, k, "GENEID", "TXNAME")
+```
+
+
+```{r}
+setwd("/media/julija/Shield2")
+txdb <- makeTxDbFromGFF("Mus_musculus.GRCm39.105.gtf")
+k <- keys(txdb, keytype ="TXNAME")
+tx2gene <- select(txdb, k, "GENEID", "TXNAME")
+```
+#Reads in biotypes file. This lists all protein-coding genes, which are the only ones we're interested for this analysis.
+```{r}
+setwd("/media/julija/Shield2")
+biotypes <- read.delim("biotypes.txt", sep = " ")
+```
+
+#Filters tx2gene based on protein-coding genes only
+```{r}
+setwd("/media/julija/Shield2")
+protein_coding <- biotypes[biotypes$gene_biotype == "protein_coding",]
+tx2gene_filt <- tx2gene[tx2gene$GENEID %in% protein_coding$ensembl_gene_id,]
+```
+
+
+#1: this Sets up path to our files. NOTE: you will have to change the samples file names (with all the groups and info)depending on what your folders are called.
+
+#2:Creates an object called txi.salmon, this is essentially all of your gene count files side by side.
+
+```{r}
+setwd("/media/julija/Shield2/Align/fem2")
+samples <- read.delim("SampleData_F_SIvG_Hipp.txt", header = TRUE, sep = "\t")
+samples$replicate <- factor(samples$replicate)
+
+files <- file.path(paste0(samples$File_name), "abundance.tsv")
+names(files) <- paste0(samples$File_name)
+file.exists(files)
+head(files)
+factor_cols <- sapply(samples, is.factor)
+
+txi.kallisto.tsv.fem <- tximport(files, type = "kallisto", tx2gene = tx2gene_filt, ignoreTxVersion = TRUE)
+```
+
+#First analysis using DEseq2, this is to get a normalised count matrix which we can use to find surrogate variables using SVAseq. Note the only factor being compared here is Group_Combined.
+```{r}
+
+setwd("/media/julija/Shield2/Align/fem2")
+dds <- DESeqDataSetFromTximport(txi = txi.kallisto.tsv.fem,
+                                colData = samples, 
+                                design = ~ Group_Combined)
+
+keep <- rowSums(counts(dds)) >= 100
+dds <- dds[keep,]
+
+
+dds$Group_Combined <- relevel(dds$Group_Combined, ref = "FVG-Hipp")
+dds <- DESeq(dds)
+```
+
+#Uses the normalised count matrix to find Number of Surrogate Variables (SVs)
+```{r}
+counts <- counts_normalized <- counts(dds, normalized=TRUE)
+
+mod <- model.matrix(~ Group_Combined,samples)
+mod0 <- model.matrix(~ 1, samples)
+svseq = svaseq(counts_normalized,mod,mod0)$sv
+
+```
+#Creats a new samples object with the surrogate variables (SVs) attached. NOTE: You will have to vary this based on the number of SVs. i.e. if you only have 2 SVs you'll have "colnames(svseq) <- c("S1", "S2")"
+
+```{r}
+colnames(svseq) <- c("S1", "S2","S3")
+samples2 <- cbind(samples, svseq)
+```
+
+#Final ANalysis with SVs included as covariates. NOTE: you'll have to change the number of covariates if you only have 2 etc.
+
+```{r}
+#set up 
+setwd("/media/julija/Shield2/Align/fem2")
+dds <- DESeqDataSetFromTximport(txi = txi.kallisto.tsv.fem,
+                                colData = samples2, 
+                                design = ~ S1 + S2 + S3 + Group_Combined)
+
+keep <- rowSums(counts(dds)) >= 100
+dds <- dds[keep,]
+
+
+dds$Group_Combined <- relevel(dds$Group_Combined, ref = "FVG-Hipp")
+dds <- DESeq(dds)
+```
+
+#Write Final Analysis into working directory
+```{r}
+setwd("/media/julija/Shield2/Align/fem2")
+res <- results(dds, name="Group_Combined_FVSI.Hipp_vs_FVG.Hipp")
+summary(res)
+write.table(res, "ResultsFem.txt")
+```
+
+
+
+#rlog transform your counts for principal component analysis (PCA)
+```{r}
+rld <- assay(rlog(dds))
+rownames(samples) <- samples$Full.Name
+colnames(rld) <- samples$Full.Name
+```
+
+#Plot PC1 vs. PC2 and colour by group
+
+```{r}
+samples$replicate <- factor(samples$replicate)
+pca = PCAtools::pca(rld, metadata = samples)
+biplot(pca, colby = "Group_Combined", title = "Female Hipp.")
+```

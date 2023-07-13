@@ -1,0 +1,181 @@
+---
+title: "biomaRt_conversion.Rmd"
+output: html_document
+date: "2023-06-07"
+---
+
+```{r}
+#load libraries that are relevant
+#library(biomaRt)
+library(dplyr)
+```
+```{r}
+#set path to external hardrive as directory, read txt file in as a table and then
+#turn it into a dataframe to use dplyr
+setwd("/media/julija/Shield1/Align/male2")
+male_DEGs <-read.table("Results.txt")
+male_df <- data.frame(male_DEGs)
+
+head(male_df)
+nrow(male_df)
+```
+```{r}
+#filter the dataframe for pvalues less than or equal to 1e-5
+male_pval <-male_df %>% 
+  filter(padj<=0.05)
+male_pval
+```
+```{r}
+#order the pvalue column from smallest to biggest
+male_pval_ordered <- male_pval[order(male_pval$padj),]
+male_pval_ordered
+nrow(male_pval_ordered)
+
+```
+
+```{r}
+#male up and down regulated genes 
+upreg_male <- subset(male_pval_ordered, log2FoldChange >0) #upregulated
+downreg_male <- subset(male_pval_ordered, log2FoldChange <0) #downregulated
+
+nrow(upreg_male)
+nrow(downreg_male)
+```
+
+```{r}
+#female up and down regulated genes 
+upreg_female <- subset(female_pval_ordered, log2FoldChange >0) #upregulated
+downreg_female <- subset(female_pval_ordered, log2FoldChange <0) #downregulated
+
+nrow(upreg_female)
+nrow(downreg_female)
+
+```
+
+
+```{r}
+sigupreg_male <- subset(male_pval_ordered, log2FoldChange >0 & padj < 0.05) #upregulated satistically significant
+sigdownreg_male <- subset(male_pval_ordered, log2FoldChange <0 & padj <0.05)
+```
+
+
+```{r}
+Sys.setenv("http_proxy" = "http://my.proxy.org:9999")
+listMarts()
+```
+```{r}
+ensembl=useMart("ensembl")
+```
+
+```{r}
+listDatasets(ensembl)
+```
+
+```{r}
+ensembl = useMart("ensembl",dataset="mmusculus_gene_ensembl")
+```
+
+```{r}
+#making a vector of all genes
+#making a vector of all genes
+rownames(male_pval_ordered)
+table_correct_male <- tibble::rownames_to_column(male_pval_ordered)
+Expressed_in_male <- c(table_correct_male$rowname)
+Expressed_in_male
+```
+
+```{r}
+results_male_deg <- getBM(attributes = c("entrezgene_id"), filters = "hgnc_symbol",values =, mart=ensembl)
+
+```
+
+```{r}
+results_male_deg
+```
+
+
+```{r}
+#head(results_male_deg)
+
+results_male_deg[results_male_deg$ensembl_gene_id == "ENSMUSG00000006464",]
+
+
+```
+
+```{r}
+
+top_genes <- c(head(results_male_deg,10))
+
+for (gene in top_genes) {
+  ifelse(results_male_deg$ensembl_gene_id ==gene, print(results_male_deg[results_male_deg$ensembl_gene_id == gene, ]), top_genes)
+}
+         
+```
+```{r}
+Expressed_in_male
+```
+
+```{r}
+for (gene in results_female_deg) {
+  ifelse(results_male_deg$ensembl_gene_id ==gene, print(results_female_deg[results_female_deg$ensembl_gene_id == gene, ]), results_female_deg)
+}
+```
+
+```{r}
+test_fem <- c(results_female_deg$ensembl_gene_id)
+
+for (gene in test_fem) {
+  ifelse(results_male_deg$ensembl_gene_id ==gene, print(results_male_deg[results_male_deg$ensembl_gene_id == gene, ]), test_fem)
+}
+```
+
+```{r}
+overlap <- intersect(results_female_deg,results_male_deg)
+
+nrow(overlap)
+overlap
+```
+
+```{r}
+men <- read.table("male_deg_labeled.txt")
+women <- read.table("female_deg_unlabeled.txt")
+
+test <- intersect(men$ ,women$id)
+```
+
+
+
+
+
+
+```{r}
+fem_ensemble <- c(results_female_deg$ensembl_gene_id)
+male_ensemble <- c(results_male_deg$ensembl_gene_id)
+
+intersect(male_ensemble,fem_ensemble)
+
+seventy <- intersect(male_pval$)
+```
+
+
+```{r}
+write.table(overlap,"overlap.txt")
+
+lap <- read.table("overlap.txt")
+data.frame(lap)
+ensembl = useMart("ensembl",dataset="mmusculus_gene_ensembl",host="https://useast.ensembl.org")
+
+overlap_degs <- getBM(attributes = c("entrezgene_id","hgnc_symbol"), filters = "entrezgene_id" ,values = lap, mart=ensembl)
+```
+
+```{r}
+df <- c()
+stuff <- overlap$ensembl_gene_id
+df <- c( df, for (gene in stuff) {
+  ifelse(male_pval$ensembl_gene_id ==gene, print(male_pval[male_pval$ensembl_gene_id == gene, ]), stuff)
+})
+```
+
+
+
+

@@ -1,0 +1,69 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-06-14"
+---
+
+```{r}
+
+data <- read.delim("competitve_ewce_analysis.txt", header = T , sep= "\t")
+
+```
+
+
+
+```{r}
+
+
+
+```
+
+
+```{r}
+#x what we observe, t what we expect 
+
+#four vectors, one for pvalues, one for enrichment and two for confidence intervals.
+
+pvalues <- c()
+enrichment <- c()
+confidence1 <- c()
+confidence2 <- c()
+
+
+for (i in 1:24){
+  pvalues <- c(pvalues, poisson.test(x=c(data$observedDEGS[i], data$observedBG[i]), T=c(data$expectedDEGS[i], data$expectedBG[i]))$p.value)
+  
+  enrichment <- c(enrichment, poisson.test(x=c(data$observedDEGS[i], data$observedBG[i]), T=c(data$expectedDEGS[i], data$expectedBG[i]))$estimate)
+  
+confidence1 <- c(confidence1, poisson.test(x=c(data$observedDEGS[i], data$observedBG[i]), T=c(data$expectedDEGS[i], data$expectedBG[i]))$conf.int[1])
+
+confidence2<- c(confidence2, poisson.test(x=c(data$observedDEGS[i], data$observedBG[i]), T=c(data$expectedDEGS[i], data$expectedBG[i]))$conf.int[2])
+                  
+}
+
+
+
+```
+
+```{r}
+alldata <-data 
+
+alldata$p.val <- pvalues
+alldata$enrich <- enrichment
+alldata$conf_in1 <- confidence1
+alldata$conf_in2 <- confidence2
+```
+
+
+
+number of degs, how many in each 
+break it up nto upregulated and down regulated and hwat overlaps between the two - venn diagram 
+gene ontology analysis - cpdb- neuronal ontologies sunburt, take top for general and sunburst block for the single 
+cell type analysis - table show which cell types in each have corrected p value of 0.05 - top male and femae, box where there is cell type name, what it is and the pvalue
+denovolyser -  te two gene sets, number in each and which are significntly enriched, none for me. 
+
+magma - table of p values and beta values for two groups and four diseases. 
+
+syngo - sets of genes that are overrepresented in the genesets. Loads of genes from one ontology, something might have been changed by SI. 
+cell type analysis - markers 
+de novo - rare mutations in magma - human data - show convergence with human data 
